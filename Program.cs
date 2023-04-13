@@ -34,16 +34,15 @@ Address scriptAddressObject = new Address(scriptAddress);
 TransactionBodyBuilder transactionBodyBuilder = (TransactionBodyBuilder)
     TransactionBodyBuilder.Create;
 
-// 5) Calculate Asset Name
+// 5) Create User and Reference Asset Name Tokens
 string referenceAssetNameHexPrefix = AssetLabelUtility.GetAssetLabelHex(100); // Asset Label (100) in CIP-67 format;
 string userAssetNameHexPrefix = AssetLabelUtility.GetAssetLabelHex(222); // Asset Label (222) in CIP-67 format;
 
-// 6) Create User and Reference Asset Name Tokens
 string userAssetNameHex = $"{userAssetNameHexPrefix}{assetName}";
 string referenceAssetNameHex = $"{referenceAssetNameHexPrefix}{assetName}";
 string referenceAssetFullNameHex = $"{policyId}{referenceAssetNameHex}";
 
-// 7) Calculate CIP-68 Mint NFTs
+// 6) Calculate CIP-68 Mint NFTs
 TokenBundleBuilder totalMintTokenBundleBuilder = (TokenBundleBuilder)TokenBundleBuilder.Create;
 TokenBundleBuilder referenceMintTokenBundleBuilder = (TokenBundleBuilder)TokenBundleBuilder.Create;
 TokenBundleBuilder userMintTokenBundleBuilder = (TokenBundleBuilder)TokenBundleBuilder.Create;
@@ -69,7 +68,7 @@ userMintTokenBundleBuilder.AddToken(
     1
 );
 
-// 8) Calculate Datums
+// 7) Calculate Datums
 // Calculate the Reference NFT Datum Metadata - Update this field to add data for your NFT!
 // Plutus Data 6.121[metadata, version, extra]
 // 6.121[metadata, version, extra] = constructor 0, fields [{}, 1, #6.121([])]
@@ -86,9 +85,9 @@ PlutusDataArray metadataDatumArray = new PlutusDataArray() { Value = metadataDat
 PlutusDataConstr constr = new PlutusDataConstr() { Value = metadataDatumArray, Alternative = 0 };
 DatumOption datum = new DatumOption() { Data = constr };
 
-// 9) Create Transaction Outputs
+// 8) Create Transaction Outputs
 
-// 9.1) Create Reference Token Output
+// 8.1) Create Reference Token Output
 TransactionOutputBuilder transactionReferenceOutputBuilder = (TransactionOutputBuilder)
     TransactionOutputBuilder.Create
         .SetAddress(scriptAddress.ToBytes())
@@ -110,13 +109,14 @@ transactionReferenceOutputBuilder.SetTransactionOutputValue(
     }
 );
 
-// 9.2) Create User Token Output
+// 8.2) Create User Token Output
 transactionBodyBuilder.AddOutput(
     paymentAddressObject.GetBytes(),
     userMintTokenBundleBuilder.Build().CalculateMinUtxoLovelace(),
     userMintTokenBundleBuilder
 );
 
+// 9) Select Inputs and change using the largest first Coin Selection Algorithm
 List<Utxo> utxos = await blockfrostService.GetUTXOs(
     new List<string> { paymentAddressObject.ToString() }
 );
@@ -137,13 +137,13 @@ foreach (TransactionOutput changeOutput in coinSelection.ChangeOutputs)
 foreach (TransactionInput input in coinSelection.Inputs)
     transactionBodyBuilder.AddInput(input);
 
-// Build the Transaction
+// 10) Build the Transaction
 transactionBodyBuilder
     .SetMint(totalMintTokenBundleBuilder)
     .SetTtl(blockfrostService.blockfrostData.currentSlot + 1 * 60 * 15) // 15 minutes
     .SetFee(0);
 
-// Create Transaction Witnesses
+// 11) Create Transaction Witnesses
 TransactionWitnessSetBuilder transactionWitnessSetBuilder = (TransactionWitnessSetBuilder)
     TransactionWitnessSetBuilder.Create;
 transactionWitnessSetBuilder
@@ -154,7 +154,7 @@ TransactionBuilder transactionBuilder = (TransactionBuilder)TransactionBuilder.C
 transactionBuilder.SetBody(transactionBodyBuilder).SetWitnesses(transactionWitnessSetBuilder);
 Transaction transaction = transactionBuilder.Build();
 
-// Calculate Final Fee
+// 12) Calculate Final Fee
 var fee = transaction.CalculateAndSetFee(
     blockfrostService.blockfrostData.minFeeA,
     blockfrostService.blockfrostData.minFeeB
@@ -164,15 +164,11 @@ ulong lastOutputChangeBalance = transaction.TransactionBody.TransactionOutputs.L
 transaction.TransactionBody.TransactionOutputs.Last().Value.Coin =
     lastOutputChangeBalance - (ulong)fee;
 
-// Submit Transaction
+// 13) Submit Transaction
 string? transactionId = await blockfrostService.SubmitTransaction(transaction);
-Console.WriteLine($"Hex Transaction: {transaction.Serialize().ToStringHex()}");
-Console.WriteLine();
-Console.WriteLine($"Transaction Id: {transactionId}");
-
 if (transactionId != null)
-{
     Console.WriteLine(
         $"Transaction Submitted Successfully! TransactionId: {transactionId}. TransactionIndex: 0"
     );
-}
+else
+    Console.WriteLine($"Transaction Failed!");

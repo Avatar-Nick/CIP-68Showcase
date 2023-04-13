@@ -3,7 +3,7 @@ This Repository shows how to create a Cardano CIP-68 NFT using CardanoSharp
 
 [CIP-68](https://cips.cardano.org/cips/cip68/) Cardano NFTs are much more powerful then the previous [CIP-25](https://cips.cardano.org/cips/cip25/) NFT standard as CIP-68 NFTs can be read and mutated by smart contracts.
 
-Developers can write custom smart contract flows for these NFTs. But in this example, we will use what is called an "Always Fail" script. Meaning when a reference NFT is locked in the smart contract, the data cannot change.
+Developers can write custom smart contract flows for these NFTs. But in this example, we will use what is called an "Always Fail" script. Meaning when a reference NFT is locked in the smart contract, the data cannot change. This address contains the script: addr1w93wm24j6fcesyfs8ed733jvct3pf2mazt7l8kxrew6ldzccmj96w
 
 1) Generate a Wallet or use an existing one
 ```
